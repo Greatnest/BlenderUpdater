@@ -1,4 +1,4 @@
-from Qt import QtWidgets, QtGui
+from PyQt5 import  QtGui, QtWidgets
 import sys
 
 def setPalette():

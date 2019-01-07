@@ -28,6 +28,7 @@ import sys
 import urllib.parse
 import urllib.request
 import webbrowser
+import time
 from datetime import datetime
 from distutils.dir_util import copy_tree  # pylint: disable=no-name-in-module,import-error
 from distutils.version import StrictVersion  # pylint: disable=no-name-in-module,import-error
@@ -38,14 +39,8 @@ from bs4 import BeautifulSoup
 import mainwindow
 import setstyle
 
-if getattr(sys, 'frozen', False):  # Do a check if running from frozen application or .py script
-    try:  # when frozen, try PySide2 first, then PyQt5. Frozen application fails to run when using Qt.py
-        from PySide2 import QtWidgets, QtCore, QtGui
-    except ImportError:
-        from PyQt5 import QtWidgets, QtCore, QtGui
-else:  # when running from script, use the Qt.py shim
-    from Qt import QtWidgets, QtCore, QtGui  # pylint: disable=no-name-in-module,import-error
-    
+from PyQt5 import QtWidgets, QtCore, QtGui
+
 app = QtWidgets.QApplication(sys.argv)
 appversion = '1.9.4'
 dir_ = ''
@@ -65,11 +60,11 @@ logger = logging.getLogger()
 
 class WorkerThread(QtCore.QThread):
     '''Does all the actual work in the background, informs GUI about status'''
-    update = QtCore.Signal(int)
-    finishedDL = QtCore.Signal()
-    finishedEX = QtCore.Signal()
-    finishedCP = QtCore.Signal()
-    finishedCL = QtCore.Signal()
+    update = QtCore.pyqtSignal(int)
+    finishedDL = QtCore.pyqtSignal()
+    finishedEX = QtCore.pyqtSignal()
+    finishedCP = QtCore.pyqtSignal()
+    finishedCL = QtCore.pyqtSignal()
 
     def __init__(self, url, file):
         super(WorkerThread, self).__init__(parent=app)
@@ -139,7 +134,6 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         self.lbl_quick.hide()
         self.lbl_caution.hide()
         self.btn_newVersion.hide()
-        self.btn_execute.hide()
         self.lbl_caution.setStyleSheet('background: rgb(255, 155, 8);\n'
                                        'color: white')
         global lastversion
@@ -203,7 +197,8 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
             logger.critical('No internet connection')
         # Check for new version on github
         try:
-            Appupdate = requests.get('https://api.github.com/repos/overmindstudios/BlenderUpdater/releases/latest').text
+            Appupdate = requests.get(
+                'https://api.github.com/repos/overmindstudios/BlenderUpdater/releases/latest').text
             logger.info('Getting update info - success')
         except Exception:
             logger.error('Unable to get update information from GitHub')
@@ -215,11 +210,20 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
             if StrictVersion(applatestversion) > StrictVersion(appversion):
                 logger.info('Newer version found on Github')
                 self.btn_newVersion.clicked.connect(self.getAppUpdate)
-                self.btn_newVersion.setStyleSheet('background: rgb(73, 50, 20)')
+                self.btn_newVersion.setStyleSheet(
+                    'background: rgb(73, 50, 20)')
                 self.btn_newVersion.show()
         except Exception:
             QtWidgets.QMessageBox.critical(
                 self, "Error", "Unable to get Github update information")
+
+        opsys = platform.system()
+        if opsys == 'Windows':
+            self.btn_execute.clicked.connect(self.exec_windows)
+        if opsys.lower == 'darwin':
+            self.btn_execute.clicked.connect(self.exec_osx)
+        if opsys == 'Linux':
+            self.btn_execute.clicked.connect(self.exec_linux)
 
     def select_path(self):
         global dir_
@@ -232,7 +236,8 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
             pass
 
     def getAppUpdate(self):
-        webbrowser.open("https://github.com/overmindstudios/BlenderUpdater/releases/latest")
+        webbrowser.open(
+            "https://github.com/overmindstudios/BlenderUpdater/releases/latest")
 
     def about(self):
         aboutText = '<html><head/><body><p>Utility to update Blender to the latest buildbot version available at<br> \
@@ -304,21 +309,25 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
             logger.error('No connection to Blender nightly builds server')
             self.frm_start.show()
         soup = BeautifulSoup(req.text, "html.parser")
-        
+
         # iterate through the found versions
         results = []
         for ul in soup.find('div', {'class': 'page-footer-main-text'}).find_all('ul'):
-            for li in ul.find_all('li', class_ = 'os'):
+            for li in ul.find_all('li', class_='os'):
                 info = list()
-                info.append(li.find('a', href = True)['href']) # Download URL to build
-                info.append(li.find('span', class_ = 'size').text) # Build file size
-                info.append(li.find('small').text) # Build date
+                # Download URL to build
+                info.append(li.find('a', href=True)['href'])
+                # Build file size
+                info.append(li.find('span', class_='size').text)
+                info.append(li.find('small').text)  # Build date
                 results.append(info)
-            results = [[item.strip().strip("\xa0") if item is not None else None for item in sublist] for sublist in results] # Removes spaces
+            results = [[item.strip().strip("\xa0") if item is not None else None for item in sublist]
+                       for sublist in results]  # Removes spaces
         finallist = []
         for sub in results:
             sub = list(filter(None, sub))
-            sub[0] = sub[0][10:] # Remove redundant parts of the URL (download...)
+            # Remove redundant parts of the URL (download...)
+            sub[0] = sub[0][10:]
             finallist.append(sub)
         finallist = list(filter(None, finallist))
 
@@ -457,7 +466,7 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         if version == installedversion:
             reply = QtWidgets.QMessageBox.question(
                 self, 'Warning',
-                "This version is already installed. Do you still want to continue?",
+                "This version is already installed. Do you want to run the program?",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                 QtWidgets.QMessageBox.No)
             logger.info('Duplicated version detected')
@@ -465,7 +474,7 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
                 logger.debug('Skipping download of existing version')
                 return
             else:
-                pass
+                self.exec_windows()
         else:
             pass
 
@@ -576,16 +585,23 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
     def exec_windows(self):
         p = subprocess.Popen(os.path.join('"' + dir_ + "\\blender.exe" + '"'))
         logger.info('Executing ' + dir_ + 'blender.exe')
+        time.sleep(2)
+        sys.exit()
 
     def exec_osx(self):
-        BlenderOSXPath = os.path.join('"' + dir_ + "\\blender.app/Contents/MacOS/blender" + '"')
+        BlenderOSXPath = os.path.join(
+            '"' + dir_ + "\\blender.app/Contents/MacOS/blender" + '"')
         os.system("chmod +x " + BlenderOSXPath)
         p = subprocess.Popen(BlenderOSXPath)
         logger.info('Executing ' + BlenderOSXPath)
+        time.sleep(2)
+        sys.exit()
 
     def exec_linux(self):
         p = subprocess.Popen(os.path.join(dir_ + '/blender'))
         logger.info('Executing ' + dir_ + 'blender')
+        time.sleep(2)
+        sys.exit()
 
 
 def main():
