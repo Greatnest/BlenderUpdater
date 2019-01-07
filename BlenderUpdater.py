@@ -474,9 +474,16 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
                 logger.debug('Skipping download of existing version')
                 return
             else:
-                self.exec_windows()
-        else:
-            pass
+                opsys = platform.system()
+                if opsys == 'Windows':
+                    self.exec_windows()
+                    
+                if opsys.lower == 'darwin':
+                    self.exec_osx()
+                if opsys == 'Linux':
+                    self.exec_linux()
+                else:
+                    pass
 
         if os.path.isdir('./blendertemp'):
             shutil.rmtree('./blendertemp')
