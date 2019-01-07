@@ -41,11 +41,6 @@ import setstyle
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-global lastversion
-global dir_
-global config
-global installedversion
-
 app = QtWidgets.QApplication(sys.argv)
 appversion = '1.9.4'
 dir_ = ''
