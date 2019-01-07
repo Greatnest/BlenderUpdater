@@ -1,6 +1,6 @@
 <RCC>
     <qresource prefix="/newPrefix">
-        <file>images/Actions-arrow-right-icon.png</file>
+        <file>images/Actions-arrow-left-icon.png</file>
         <file>images/Actions-quickopen-icon.png</file>
         <file>images/Check-icon.png</file>
         <file>images/appicon.png</file>

@@ -41,6 +41,11 @@ import setstyle
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
+global lastversion
+global dir_
+global config
+global installedversion
+
 app = QtWidgets.QApplication(sys.argv)
 appversion = '1.9.4'
 dir_ = ''
@@ -136,10 +141,14 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         self.btn_newVersion.hide()
         self.lbl_caution.setStyleSheet('background: rgb(255, 155, 8);\n'
                                        'color: white')
-        global lastversion
+
+        self.home()
+
+    def home(self):
         global dir_
-        global config
+        global lastversion
         global installedversion
+        
         if os.path.isfile('./config.ini'):
             config_exist = True
             logger.info('Reading existing configuration file')
@@ -173,19 +182,32 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         else:
             pass
         dir_ = self.line_path.text()
+
+        self.btn_Check.show()
+        self.btn_about.show()
+        self.btn_path.show()
+        self.label.show()
+        self.lbl_start.show()
+
+        self.lbl_available.hide()
+        self.lbl_caution.hide()
         self.btn_cancel.hide()
         self.frm_progress.hide()
         self.btngrp_filter.hide()
         self.btn_Check.setFocus()
-        self.lbl_available.hide()
         self.progressBar.setValue(0)
         self.progressBar.hide()
         self.lbl_task.hide()
-        self.statusbar.showMessage('Ready - Last check: ' + lastcheck)
-        self.btn_Quit.clicked.connect(QtCore.QCoreApplication.instance().quit)
+        self.statusbar.hide()
+        self.btn_Back.hide()
+
         self.btn_Check.clicked.connect(self.check_dir)
         self.btn_about.clicked.connect(self.about)
         self.btn_path.clicked.connect(self.select_path)
+
+        for i in btn:
+            btn[i].hide()
+
         # Check internet connection, disable SSL
         # FIXME - should be changed! (preliminary fix to work in OSX)
         ssl._create_default_https_context = ssl._create_unverified_context
@@ -287,8 +309,10 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         self.btn_newVersion.hide()
         self.progressBar.hide()
         self.lbl_task.hide()
-        self.btn_newVersion.hide()
-        self.btn_execute.hide()
+        self.btn_Check.hide()
+        self.btn_Back.show()
+        self.btn_Back.clicked.connect(self.go_back)
+        self.btn_execute.setGeometry(QtCore.QRect(560, 481, 131, 35))
 
         appleicon = QtGui.QIcon(':/newPrefix/images/Apple-icon.png')
         windowsicon = QtGui.QIcon(':/newPrefix/images/Windows-icon.png')
@@ -466,7 +490,7 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         if version == installedversion:
             reply = QtWidgets.QMessageBox.question(
                 self, 'Warning',
-                "This version is already installed. Do you want to run the program?",
+                "This version is already installed. Do you want to continue the installation?",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                 QtWidgets.QMessageBox.No)
             logger.info('Duplicated version detected')
@@ -474,16 +498,7 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
                 logger.debug('Skipping download of existing version')
                 return
             else:
-                opsys = platform.system()
-                if opsys == 'Windows':
-                    self.exec_windows()
-                    
-                if opsys.lower == 'darwin':
-                    self.exec_osx()
-                if opsys == 'Linux':
-                    self.exec_linux()
-                else:
-                    pass
+                pass
 
         if os.path.isdir('./blendertemp'):
             shutil.rmtree('./blendertemp')
@@ -519,6 +534,7 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         self.progressBar.setValue(0)
         self.btn_Check.setDisabled(True)
         self.statusbar.showMessage('Downloading ' + size_readable)
+
         thread = WorkerThread(url, filename)
         thread.update.connect(self.updatepb)
         thread.finishedDL.connect(self.extraction)
@@ -533,7 +549,7 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
     def extraction(self):
         logger.info('Extracting to temp directory')
         self.lbl_task.setText('Extracting...')
-        self.btn_Quit.setEnabled(False)
+        self.btn_Back.setEnabled(False)
         nowpixmap = QtGui.QPixmap(
             ':/newPrefix/images/Actions-arrow-right-icon.png')
         donepixmap = QtGui.QPixmap(':/newPrefix/images/Check-icon.png')
@@ -578,7 +594,7 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         self.progressBar.setMaximum(100)
         self.progressBar.setValue(100)
         self.lbl_task.setText('Finished')
-        self.btn_Quit.setEnabled(True)
+        self.btn_Back.setEnabled(True)
         self.btn_Check.setEnabled(True)
         self.btn_execute.show()
         opsys = platform.system()
@@ -609,6 +625,39 @@ class BlenderUpdater(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         logger.info('Executing ' + dir_ + 'blender')
         time.sleep(2)
         sys.exit()
+
+    def go_back(self):
+        print("Here!")
+        if not self.btn_Check.isVisible():
+            self.btn_Check.show()
+            self.btn_about.show()
+            self.btn_path.show()
+            self.label.show()
+            self.lbl_start.show()
+
+            self.lbl_available.hide()
+            self.lbl_caution.hide()
+            self.btn_cancel.hide()
+            self.frm_progress.hide()
+            self.btngrp_filter.hide()
+            self.btn_Check.setFocus()
+            self.progressBar.setValue(0)
+            self.progressBar.hide()
+            self.lbl_task.hide()
+            self.statusbar.hide()
+            self.btn_Back.hide()
+
+            self.btn_Check.clicked.connect(self.check_dir)
+            self.btn_about.clicked.connect(self.about)
+            self.btn_path.clicked.connect(self.select_path)
+
+            for i in btn:
+                btn[i].hide()
+
+            # self.home()
+        else:
+            print("her2e!")
+            self.check()
 
 
 def main():

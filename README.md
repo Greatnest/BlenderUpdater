@@ -4,6 +4,9 @@
 
 [![Coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/tobkum)
 
+## TO DO
+1. Fix back button function!
+
 # BlenderUpdater
  ![logo](https://raw.githubusercontent.com/overmindstudios/BlenderUpdater/master//images/appicon.png)
 
